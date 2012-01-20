@@ -49,33 +49,38 @@
 use DBI;
 use Data::Dumper;
 use xenserver;
+use Zabbix;
 
-#TODO replace these mysql calls with api calls
-$dbh = DBI->connect('dbi:mysql:zabbix','user_mysql_zabbix','pass_mysql_zabbix') or die "Connection Error: $DBI::errstr\n";
-$sql = "select groupid from groups where name='XEN-SERVERS'";
-$sth = $dbh->prepare($sql);
-$sth->execute or die "SQL Error: $DBI::errstr\n";
+#GLOBAL VARS
+$MYSQL_ZABBIX_DB = 'zabbix';
+$MYSQL_ZABBIX_USER = 'user';
+$MYSQL_ZABBIX_PASS = 'pass';
+$ZABBIX_HOSTGROUPNAME_XEN_SERVERS = 'XEN-SERVERS';
+$ZABBIX_URL = 'http://url.zabbix.es';
+$ZABBIX_SERVER_IP = '8.8.8.8';
+$ZABBIX_USER_API = 'Admin';
+$ZABBIX_USER_PASS = 'Admin_api';
+$PATH_ZABBIX_SENDER_BIN = '/usr/local/bin/zabbix_sender';
+$PATH_CHECK_NRPE_BIN = '/root/crons/check_nrpe';
+$TIMEOUT_CHECK_NRPE = 1;
 
-while (@row = $sth->fetchrow_array) {
-	#obter hosts
-	$sql1 = "select hostid from hosts_groups where groupid=@row";
-	$sth1 = $dbh->prepare($sql1);
- 	$sth1->execute or die "SQL Error: $DBI::errstr\n";
-	
-	while (@row1 = $sth1->fetchrow_array) {
-		#xa temos xen-servers
-		$sql2 = "select dns,ip,host,useip from hosts where hostid=@row1";
-		$sth2 = $dbh->prepare($sql2);
-	        $sth2->execute or die "SQL Error: $DBI::errstr\n";
-		
-		while (@row2 = $sth2->fetchrow_array) {
-			&update_host(@row2);
-		}
+#get hostgroupid in zabbix that belons to $ZABBIX_HOSTGROUPNAME_XEN_SERVERS
+my $zabbixsession = Net::Zabbix->new($main::ZABBIX_URL,$main::ZABBIX_USER_API,$main::ZABBIX_USER_PASS);
+my $hostgroupid = $zabbixsession->get('hostgroup', { output => 'extend', filter => { name => $ZABBIX_HOSTGROUPNAME_XEN_SERVERS }});
+my @my_array_1=$hostgroupid->{'result'};
+my $groupid_zabbix=$my_array_1[0][0]->{'groupid'};
 
-	}
-} 
-
-
+#now, fetch hostids from groupid
+my $hostids = $zabbixsession->get('host', { output => 'extend', groupids => $groupid_zabbix });
+my @my_array_2=$hostids->{'result'};
+for $aref ( @my_array_2 ) {
+	#for each host
+	for $bref (@$aref) {
+	    #now, we need extra info from each host (to check it by ip/dnsname)
+	    $host_info = $zabbixsession->get('host', { output => 'extend', hostids => $bref->{'hostid'}});
+	    &update_host($host_info);
+	    }
+    }
 
 #subroutine to update a zabbix specific host
 #it will:
@@ -85,20 +90,20 @@ while (@row = $sth->fetchrow_array) {
 sub update_host (){
 
 	#useip determine if we have to check our zabbix host by ip or by dns
-	if ($row2[3] eq 0) # by dns
+	if ($host_info->{result}[0]->{'useip'} eq 0) # by dns
 		{
-		$connect_to=$row2[0];
+		$connect_to=$host_info->{result}[0]->{'dns'};
 		}
 	else #default by ip
 		{
-		$connect_to=$row2[1];
+		$connect_to=$host_info->{result}[0]->{'ip'};
 		}
 	
 	#TODO usar threads 
 	#get info from nagios plugin
 	#-t 1 (timeout 1 second)
 	#adjust the path to where you have put the check_nrpe command
-	$output=`/root/crons/check_nrpe -H $connect_to -c check_xen -t 1`;
+	$output=`$PATH_CHECK_NRPE_BIN -H $connect_to -c check_xen -t $TIMEOUT_CHECK_NRPE`;
 	&parse_output_nrpe($output);
 
 }
@@ -123,7 +128,7 @@ sub parse_output_nrpe(){
 		}
 	else	{
 		$status_xen=0;
-		return 1;
+		return 0;
 		}
 
 	#get mem
