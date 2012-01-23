@@ -12,9 +12,7 @@
 #Usage: install this script as a crontab every X minutes to get stats every X
 #Tips: you can add a discovery rule in zabbix to check a network range and tcp port 5666 to auto-add hosts to group in zabbix
 #
-#TODO: CHANGE SOME MYSQL QUERIES TO ZABBIX API CALLS
 #TODO: USE THREADS TO INCREASE PERFORMANCE
-#TODO: NEED TO CHANGE SOME VARS TO GLOBAL VARS TO CHANGE SOME COMMANDS EASILY 
 #TODO: Learn perl to avoid common mistakes that are (that's for sure) present in this code. Sorry :(
 #
 #Requirementes:
@@ -26,7 +24,7 @@
 # DBI
 #
 # xenserver.pm (included)
-# Zabbix.pm (included, this is a modified version) that has two new methos (post,update)
+# Zabbix.pm (included, this is a modified version) that has new methods (post,update)
 # Original version can be found here: https://github.com/sjohnston/Net-Zabbix/blob/master/lib/Net/Zabbix.pm
 #
 #This program is free software; you can redistribute it and/or modify
