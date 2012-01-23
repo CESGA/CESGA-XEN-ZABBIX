@@ -23,7 +23,7 @@
 # DBI
 #
 # xenserver.pm (included)
-# Zabbix.pm (included, this is a modified version) that has two new methos (post,update)
+# Zabbix.pm (included, this is a modified version) that has new methods (post,update)
 # Original version can be found here: https://github.com/sjohnston/Net-Zabbix/blob/master/lib/Net/Zabbix.pm
 #
 #This program is free software; you can redistribute it and/or modify
