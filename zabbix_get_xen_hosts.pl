@@ -140,7 +140,7 @@ sub parse_output_nrpe(){
 	$vm_info=substr $output,$pos2+2;
 
 	#@row1 is the hostid of this xen server at zabbix
-	$info_xen = new xenserver($row2[2],$row1[0],$status_xen, $mem_xen,$vm_info);
+	$info_xen = new xenserver($host_info->{result}[0]->{'host'},$bref->{'hostid'},$status_xen, $mem_xen,$vm_info);
 	
 	#proceed with this xen-server
 	$info_xen->submit_zabbix();
