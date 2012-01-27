@@ -5,12 +5,14 @@
 #Developed by Frco. Javier Rial <fjrial@cesga.es>
 #www.CESGA.es
 #
-#This script queries zabbix database to search for hosts in a specific hostgroup (XEN-SERVERS)
+#This script queries zabbix api to search for hosts in a specific hostgroup (XEN-SERVERS)
 #It assumes that every host obtained is a xen-server, so it'll check for nagios_nrpe port (5666) to
-#execute check_xen command (using check_nrpe program). Obtains output, parse it, and submit to zabbix.
+#execute check_xen command (using check_nrpe program). Obtains output, parse it, and submits 
+#CPU/MEM usage from each domu to zabbix.
 #
 #Usage: install this script as a crontab every X minutes to get stats every X
 #Tips: you can add a discovery rule in zabbix to check a network range and tcp port 5666 to auto-add hosts to group in zabbix
+#NOTE: this script asumes that domu name is unique. Can not exist 2 domus with the same name (even if they are running in different xen-servers)
 #
 #TODO: USE THREADS TO INCREASE PERFORMANCE
 #TODO: Learn perl to avoid common mistakes that are (that's for sure) present in this code. Sorry :(
@@ -21,10 +23,9 @@
 #
 # JSON::XS;
 # LWP::UserAgent;
-# DBI
 #
 # xenserver.pm (included)
-# Zabbix.pm (included, this is a modified version) that has new methods (post,update)
+# Zabbix.pm (included, this is a modified version) that has two new methos (post,update)
 # Original version can be found here: https://github.com/sjohnston/Net-Zabbix/blob/master/lib/Net/Zabbix.pm
 #
 #This program is free software; you can redistribute it and/or modify
@@ -42,25 +43,18 @@
 #Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 
-
-
-use DBI;
-use Data::Dumper;
 use xenserver;
 use Zabbix;
 
 #GLOBAL VARS
-$MYSQL_ZABBIX_DB = 'zabbix';
-$MYSQL_ZABBIX_USER = 'user';
-$MYSQL_ZABBIX_PASS = 'pass';
 $ZABBIX_HOSTGROUPNAME_XEN_SERVERS = 'XEN-SERVERS';
-$ZABBIX_URL = 'http://url.zabbix.es';
+$ZABBIX_URL = 'http://www.zabbix.es';
 $ZABBIX_SERVER_IP = '8.8.8.8';
-$ZABBIX_USER_API = 'Admin';
-$ZABBIX_USER_PASS = 'Admin_api';
+$ZABBIX_USER_API = 'Api_user';
+$ZABBIX_USER_PASS = 'Api_pass';
 $PATH_ZABBIX_SENDER_BIN = '/usr/local/bin/zabbix_sender';
 $PATH_CHECK_NRPE_BIN = '/root/crons/check_nrpe';
-$TIMEOUT_CHECK_NRPE = 1;
+$TIMEOUT_CHECK_NRPE = 5;
 
 #get hostgroupid in zabbix that belons to $ZABBIX_HOSTGROUPNAME_XEN_SERVERS
 my $zabbixsession = Net::Zabbix->new($main::ZABBIX_URL,$main::ZABBIX_USER_API,$main::ZABBIX_USER_PASS);
@@ -97,7 +91,7 @@ sub update_host (){
 		$connect_to=$host_info->{result}[0]->{'ip'};
 		}
 	
-	#TODO usar threads 
+	#TODO use threads to increase performance
 	#get info from nagios plugin
 	#-t 1 (timeout 1 second)
 	#adjust the path to where you have put the check_nrpe command
@@ -139,10 +133,9 @@ sub parse_output_nrpe(){
 	#create table with vms info
 	$vm_info=substr $output,$pos2+2;
 
-	#@row1 is the hostid of this xen server at zabbix
+	#create object xenserver
 	$info_xen = new xenserver($host_info->{result}[0]->{'host'},$bref->{'hostid'},$status_xen, $mem_xen,$vm_info);
 	
 	#proceed with this xen-server
 	$info_xen->submit_zabbix();
 }
-
