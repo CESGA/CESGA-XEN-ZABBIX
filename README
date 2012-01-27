@@ -10,7 +10,6 @@
 #Usage: install this script as a crontab every X minutes to get stats every X
 #Tips: you can add a discovery rule in zabbix to check a network range and tcp port 5666 to auto-add hosts to group in zabbix
 #
-#TODO: CHANGE SOME MYSQL QUERIES TO ZABBIX API CALLS (partial implemented)
 #TODO: USE THREADS TO INCREASE PERFORMANCE
 #TODO: Learn perl to avoid common mistakes that are (that's for sure) present in this code. Sorry :(
 #
@@ -20,7 +19,6 @@
 #
 # JSON::XS;
 # LWP::UserAgent;
-# DBI
 #
 # xenserver.pm (included)
 # Zabbix.pm (included, this is a modified version) that has new methods (post,update)
